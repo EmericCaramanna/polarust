@@ -1,6 +1,6 @@
 
 use ggez::{
-    event, glam::*, graphics::{self, Color}, input::keyboard::KeyCode, Context, GameResult
+    conf::{self, WindowSetup}, event, glam::*, graphics::{self, Color}, input::keyboard::KeyCode, Context, GameResult
 };
 
 struct MainState {
@@ -22,14 +22,18 @@ impl MainState {
         Ok(MainState { bird })
     }
 
-    fn polarize(x: f32, y: f32) -> (f32,f32) {
-        ((x.powf(2.0) + y.powf(2.0)).sqrt(), x.atan2(y))
+    fn carttopol(x: f32, y: f32) -> (f32,f32) {
+        ((x.powf(2.0) + y.powf(2.0)).sqrt(), y.atan2(x))
+    }
+
+    fn poltocart(radius: f32, angle: f32) -> (f32, f32) {
+        (radius * angle.cos(), radius * angle.sin())
     }
 }
 
 struct Bird {
-    x: f32,
-    y: f32,
+    radius: f32,
+    angle: f32,
     gravity: f32,
     lift: f32,
     velocity: f32,
@@ -39,22 +43,23 @@ struct Bird {
 impl Bird {
     fn new(circle: graphics::Mesh) -> Bird {
         Bird {
-            x: 100.0,
-            y: 250.0,
-            gravity: 0.6,
-            lift: -15.0,
+            radius: 100.0,
+            angle: 0.0,
+            gravity: -0.6,
+            lift: 15.0,
             velocity: 0.0,
             circle
         }
     }
 
     fn jump(&mut self) -> () {
-        self.velocity = if self.velocity + self.lift > -5.0 { -5.0 } else { self.velocity + self.lift };
+        self.velocity = if self.velocity + self.lift > 8.0 { 8.0 } else { self.velocity + self.lift };
     }
 
     fn update(&mut self) -> () {
-        self.y += self.velocity;
-        self.velocity = if self.velocity + self.gravity > 8.0 { 8.0 } else { self.velocity + self.gravity };
+        self.radius = self.radius + self.velocity;
+        
+        self.velocity = if self.velocity + self.gravity < -8.0 { -8.0 } else { self.velocity + self.gravity };
     }
 }
 
@@ -78,8 +83,9 @@ impl event::EventHandler<ggez::GameError> for MainState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas =
             graphics::Canvas::from_frame(ctx, graphics::Color::from([0.1, 0.2, 0.3, 1.0]));
-        let (px, py) = MainState::polarize(self.bird.x, self.bird.y);
-        canvas.draw(&self.bird.circle, Vec2::new(py, px));
+        let (x, y) = MainState::poltocart(self.bird.radius, self.bird.angle);
+
+        canvas.draw(&self.bird.circle, Vec2::new(x + 800.0 / 2.0, y + 800.0 / 2.0));
 
         canvas.finish(ctx)?;
 
@@ -88,7 +94,10 @@ impl event::EventHandler<ggez::GameError> for MainState {
 }
 
 pub fn main() -> GameResult {
-    let cb = ggez::ContextBuilder::new("super_simple", "ggez");
+    let cb = ggez::ContextBuilder::new("polarust", "emeric")
+        .window_setup(conf::WindowSetup::default().title("Polarust"))
+        .window_mode(conf::WindowMode::default().dimensions(800.0, 800.0));
+    ;
     let (mut ctx, event_loop) = cb.build()?;
     let state = MainState::new(&mut ctx)?;
     event::run(ctx, event_loop, state)
