@@ -21,6 +21,10 @@ impl MainState {
 
         Ok(MainState { bird })
     }
+
+    fn polarize(x: f32, y: f32) -> (f32,f32) {
+        ((x.powf(2.0) + y.powf(2.0)).sqrt(), x.atan2(y))
+    }
 }
 
 struct Bird {
@@ -51,8 +55,6 @@ impl Bird {
     fn update(&mut self) -> () {
         self.y += self.velocity;
         self.velocity = if self.velocity + self.gravity > 8.0 { 8.0 } else { self.velocity + self.gravity };
-
-
     }
 }
 
@@ -76,8 +78,8 @@ impl event::EventHandler<ggez::GameError> for MainState {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas =
             graphics::Canvas::from_frame(ctx, graphics::Color::from([0.1, 0.2, 0.3, 1.0]));
-
-        canvas.draw(&self.bird.circle, Vec2::new(self.bird.x, self.bird.y));
+        let (px, py) = MainState::polarize(self.bird.x, self.bird.y);
+        canvas.draw(&self.bird.circle, Vec2::new(py, px));
 
         canvas.finish(ctx)?;
 
