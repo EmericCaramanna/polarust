@@ -23,11 +23,11 @@ impl MainState {
             2.0,
             Color::WHITE,
         )?;
-        let bird = Bird::new(circle);
+        let bird = Bird::new(circle, 100.0, 50.0);
         let point = Point2 { x: 0.0, y: 0.0 };
         let mut points: [Point2<f32>; 2000] = [point; 2000];
         for i in 0..2000 {
-            let (x, y) = MainState::poltocart((i * 5) as f32, i as f32 * 0.1);
+            let (x, y) = MainState::poltocart(i as f32, i as f32 * 0.1);
             points[i].x = x;
             points[i].y = y;
         }
@@ -48,21 +48,20 @@ impl MainState {
             ctx,
             graphics::DrawMode::fill(),
             vec2(x * self.zoom, y * self.zoom),
-            10.0,
+            10.0 * self.zoom,
             2.0,
             Color::WHITE,
         )?;
-        let bird = Bird::new(circle);
         let point = Point2 { x: 0.0, y: 0.0 };
         let mut points: [Point2<f32>; 2000] = [point; 2000];
         for i in 0..2000 {
-            let (x, y) = MainState::poltocart((i * 5) as f32, i as f32 * 0.1);
+            let (x, y) = MainState::poltocart(i as f32 * 5.0, i as f32 * 0.1);
             points[i].x = x * self.zoom;
             points[i].y = y * self.zoom;
         }
         let spiral = graphics::Mesh::new_line(ctx, &points, 1.0, Color::RED)?;
         self.spiral = spiral;
-        self.bird = bird;
+        self.bird.circle = circle;
         canvas.draw(&self.spiral, Vec2::new(SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0));
         canvas.draw(&self.bird.circle, Vec2::new(x + SCREEN_WIDTH / 2.0, y + SCREEN_HEIGHT / 2.0));
         canvas.finish(ctx)?;
@@ -71,7 +70,7 @@ impl MainState {
     }
 
     fn zoom_out(&mut self, dt: time::Duration) {
-        self.zoom = self.zoom - (0.01 * dt.as_secs_f32());
+        self.zoom = if self.zoom - (0.05 * dt.as_secs_f32()) < 0.1 { 0.1 } else { self.zoom - (0.05 * dt.as_secs_f32()) };
     }
 
     fn update_elements(&mut self, dt: time::Duration) {
@@ -89,12 +88,12 @@ struct Bird {
 }
 
 impl Bird {
-    fn new(circle: graphics::Mesh) -> Bird {
+    fn new(circle: graphics::Mesh, radius:f32, angle: f32) -> Bird {
         Bird {
-            radius: 100.0,
-            angle: 20.0,
-            gravity: -0.6,
-            lift: 500.0,
+            radius,
+            angle,
+            gravity: -0.1,
+            lift: 50.0,
             velocity: 0.0,
             circle
         }
@@ -109,6 +108,8 @@ impl Bird {
         self.angle = self.angle + (0.5 * dt.as_secs_f32());
         self.velocity = if self.velocity + self.gravity < -500.0 { -500.0 } else { self.velocity + self.gravity };
     }
+
+    //fn collision_with_circle()
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
@@ -123,15 +124,6 @@ impl event::EventHandler<ggez::GameError> for MainState {
             })
     }
 
-    fn mouse_wheel_event(&mut self, _ctx: &mut Context, _x: f32, y: f32) -> GameResult {
-        if y > 0.0 {
-            self.zoom = self.zoom - 0.1;
-        } else if y < 0.0 {
-            self.zoom = self.zoom + 0.1;
-        }
-        Ok(())
-    }
-
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         self.bird.update(ctx.time.delta());
         self.update_elements(ctx.time.delta());
@@ -139,8 +131,8 @@ impl event::EventHandler<ggez::GameError> for MainState {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        self.draw_elements(ctx);
-        Ok(())
+        let draw_elements = self.draw_elements(ctx)?;
+        Ok(draw_elements)
     }
 }
 
