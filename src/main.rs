@@ -9,6 +9,7 @@ const SCREEN_HEIGHT: f32 = 600.0;
 
 struct MainState {
     bird: Bird,
+    points: [Point2<f32>; 2000],
     spiral: graphics::Mesh,
     zoom: f32
 }
@@ -33,7 +34,7 @@ impl MainState {
         }
         let spiral = graphics::Mesh::new_line(ctx, &points, 1.0, Color::RED)?;
 
-        Ok(MainState { bird, spiral, zoom: 1.0 })
+        Ok(MainState { bird, spiral, points,zoom: 1.0 })
     }
 
     fn poltocart(radius: f32, angle: f32) -> (f32, f32) {
@@ -62,6 +63,7 @@ impl MainState {
         let spiral = graphics::Mesh::new_line(ctx, &points, 1.0, Color::RED)?;
         self.spiral = spiral;
         self.bird.circle = circle;
+        self.points = points;
         canvas.draw(&self.spiral, Vec2::new(SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0));
         canvas.draw(&self.bird.circle, Vec2::new(x + SCREEN_WIDTH / 2.0, y + SCREEN_HEIGHT / 2.0));
         canvas.finish(ctx)?;
@@ -76,6 +78,45 @@ impl MainState {
     fn update_elements(&mut self, dt: time::Duration) {
         self.zoom_out(dt);
     }
+
+    fn line_intersects_circle(x1:f32, y1:f32, x2:f32, y2:f32, xc:f32, yc:f32, r:f32) -> bool {
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        let fx = x1 - xc;
+        let fy = y1 - yc;
+
+        let a = dx * dx + dy * dy;
+        let b = 2.0 * (fx * dx + fy * dy);
+        let c = (fx * fx + fy * fy) - r * r;
+
+        let mut discriminant = b * b - 4.0 * a * c;
+        if discriminant < 0.0 {
+            false
+        } else {
+            discriminant = discriminant.sqrt();
+            let t1 = (-b - discriminant) / (2.0 * a);
+            let t2 = (-b + discriminant) / (2.0 * a);
+
+            if (t1 >= 0.0 && t1 <= 1.0) || (t2 >= 0.0 && t2 <= 1.0) {
+                true
+            } else {
+                false
+            }
+
+        }
+    }
+
+    fn spiral_intersects_circle(&mut self) -> bool {
+        for i in 0..(self.points.len() - 1) {
+            let (x1, y1, x2, y2) = (self.points[i].x, self.points[i].y, self.points[i + 1].x, self.points[i + 1].y);
+            let (xc, yc) = MainState::poltocart(self.bird.radius, self.bird.angle);
+            if MainState::line_intersects_circle(x1, y1, x2, y2, xc, yc, 10.0 * self.zoom) == true {
+                return true;
+            }
+        }
+        false
+    }
+
 }
 
 struct Bird {
@@ -108,8 +149,6 @@ impl Bird {
         self.angle = self.angle + (0.5 * dt.as_secs_f32());
         self.velocity = if self.velocity + self.gravity < -500.0 { -500.0 } else { self.velocity + self.gravity };
     }
-
-    //fn collision_with_circle()
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
@@ -127,6 +166,10 @@ impl event::EventHandler<ggez::GameError> for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         self.bird.update(ctx.time.delta());
         self.update_elements(ctx.time.delta());
+        let col = self.spiral_intersects_circle();
+        if col {
+            println!("collision!");
+        }
         Ok(())
     }
 
