@@ -1,6 +1,8 @@
 use core::time;
 
-use ggez::graphics::{self, Color};
+use ggez::{graphics::{self, Color}, Context};
+
+use crate::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
 
 pub(crate) struct Bird {
@@ -30,10 +32,11 @@ impl Bird {
         self.velocity = if self.velocity + self.lift > 400.0 { 400.0 } else { self.velocity + self.lift };
     }
 
-    pub(crate) fn update(&mut self, dt: time::Duration) {
+    pub(crate) fn update(&mut self, dt: time::Duration, ctx: &mut Context) {
         self.radius = self.radius + (self.velocity * dt.as_secs_f32());
         self.angle = self.angle + (0.5 * dt.as_secs_f32());
         self.velocity = if self.velocity + self.gravity < -500.0 { -500.0 } else { self.velocity + self.gravity };
+
     }
 
     pub(crate) fn update_color(&mut self, color: Color) {
