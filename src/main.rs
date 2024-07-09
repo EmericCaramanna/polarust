@@ -1,3 +1,6 @@
+mod bird;
+use bird::Bird;
+
 use ggez::{
     conf, event, glam::*, graphics::{self, Color}, input::keyboard::KeyCode, mint::Point2, Context, GameResult
 };
@@ -24,11 +27,11 @@ impl MainState {
             2.0,
             Color::WHITE,
         )?;
-        let bird = Bird::new(circle, 100.0, 50.0);
+        let bird = Bird::new(circle, 100.0, 50.0, Color::WHITE);
         let point = Point2 { x: 0.0, y: 0.0 };
         let mut points: [Point2<f32>; 2000] = [point; 2000];
         for i in 0..2000 {
-            let (x, y) = MainState::poltocart(i as f32, i as f32 * 0.1);
+            let (x, y) = MainState::poltocart(i as f32 * 5.0, i as f32 * 0.1);
             points[i].x = x;
             points[i].y = y;
         }
@@ -51,7 +54,7 @@ impl MainState {
             vec2(x * self.zoom, y * self.zoom),
             10.0 * self.zoom,
             2.0,
-            Color::WHITE,
+            self.bird.color,
         )?;
         let point = Point2 { x: 0.0, y: 0.0 };
         let mut points: [Point2<f32>; 2000] = [point; 2000];
@@ -76,7 +79,7 @@ impl MainState {
     }
 
     fn update_elements(&mut self, dt: time::Duration) {
-        self.zoom_out(dt);
+        //self.zoom_out(dt);
     }
 
     fn line_intersects_circle(x1:f32, y1:f32, x2:f32, y2:f32, xc:f32, yc:f32, r:f32) -> bool {
@@ -119,38 +122,6 @@ impl MainState {
 
 }
 
-struct Bird {
-    radius: f32,
-    angle: f32,
-    gravity: f32,
-    lift: f32,
-    velocity: f32,
-    circle: graphics::Mesh
-}
-
-impl Bird {
-    fn new(circle: graphics::Mesh, radius:f32, angle: f32) -> Bird {
-        Bird {
-            radius,
-            angle,
-            gravity: -0.1,
-            lift: 50.0,
-            velocity: 0.0,
-            circle
-        }
-    }
-
-    fn jump(&mut self) -> () {
-        self.velocity = if self.velocity + self.lift > 400.0 { 400.0 } else { self.velocity + self.lift };
-    }
-
-    fn update(&mut self, dt: time::Duration) -> () {
-        self.radius = self.radius + (self.velocity * dt.as_secs_f32());
-        self.angle = self.angle + (0.5 * dt.as_secs_f32());
-        self.velocity = if self.velocity + self.gravity < -500.0 { -500.0 } else { self.velocity + self.gravity };
-    }
-}
-
 impl event::EventHandler<ggez::GameError> for MainState {
     fn key_down_event(
             &mut self,
@@ -168,7 +139,9 @@ impl event::EventHandler<ggez::GameError> for MainState {
         self.update_elements(ctx.time.delta());
         let col = self.spiral_intersects_circle();
         if col {
-            println!("collision!");
+            self.bird.update_color(Color::RED);
+        } else {
+            self.bird.update_color(Color::WHITE);
         }
         Ok(())
     }
