@@ -137,3 +137,24 @@ pub fn main() -> GameResult {
     let state = MainState::new(&mut ctx)?;
     event::run(ctx, event_loop, state)
 }
+
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_poltocart() {
+        assert_eq!(MainState::poltocart(10., 50.), (9.64966, -2.6237485));
+    }
+
+    #[test]
+    fn test_point_circle_collision() {
+        assert_eq!(MainState::point_circle_collision(Point2 {x: 0., y: 0.}, Point2 {x: 0., y: 0.}, 15.), true);
+        assert_eq!(MainState::point_circle_collision(Point2 {x: 10., y: 0.}, Point2 {x: 0., y: 0.}, 15.), true);
+        assert_eq!(MainState::point_circle_collision(Point2 {x: 0., y: 0.}, Point2 {x: 0., y: -10.}, 15.), true);
+        assert_eq!(MainState::point_circle_collision(Point2 {x: 0., y: 0.}, Point2 {x: 0., y: -100.}, 15.), false);
+        assert_eq!(MainState::point_circle_collision(Point2 {x: -50., y: 50.}, Point2 {x: 0., y: 0.}, 15.), false);
+    }
+}
