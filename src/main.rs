@@ -22,20 +22,20 @@ impl MainState {
         let circle = graphics::Mesh::new_circle(
             ctx,
             graphics::DrawMode::fill(),
-            vec2(100., 0.),
+            vec2(0., 0.),
             10.0,
             2.0,
             Color::WHITE,
         )?;
-        let bird = Bird::new(circle, 100.0, 50.0, Color::WHITE);
+        let bird = Bird::new(circle, 100.0, 0.0, Color::WHITE);
         let mut points: [Point2<f32>; 2000] = [Point2 { x: 0.0, y: 0.0 }; 2000];
         for i in 0..2000 {
             let (x, y) = MainState::poltocart(i as f32 * 5.0, i as f32 * 0.1);
-            points[i].x = x;
+            points[i].x = x * 1.0;
             points[i].y = y;
         }
         let spiral = graphics::Mesh::new_line(ctx, &points, 10.0, Color::RED)?;
-        Ok(MainState { bird, spiral, points,zoom: 1.0 })
+        Ok(MainState { bird, spiral, points, zoom: 1.0 })
     }
 
     fn poltocart(radius: f32, angle: f32) -> (f32, f32) {
@@ -49,7 +49,7 @@ impl MainState {
         let circle = graphics::Mesh::new_circle(
             ctx,
             graphics::DrawMode::fill(),
-            vec2(x * self.zoom, y * self.zoom),
+            vec2(0., 0.),
             10.0 * self.zoom,
             2.0,
             self.bird.color,
@@ -60,7 +60,7 @@ impl MainState {
             points[i].x = x * self.zoom;
             points[i].y = y * self.zoom;
         }
-        let spiral = graphics::Mesh::new_line(ctx, &points, 10.0, Color::RED)?;
+        let spiral = graphics::Mesh::new_line(ctx, &points, 10.0 * self.zoom, Color::RED)?;
         self.spiral = spiral;
         self.bird.circle = circle;
         self.points = points;
@@ -75,7 +75,7 @@ impl MainState {
     }
 
     fn update_elements(&mut self, dt: time::Duration) {
-        //self.zoom_out(dt);
+        self.zoom_out(dt);
     }
 
     fn point_circle_collision(point: Point2<f32>, circle_center: Point2<f32>, circle_radius: f32) -> bool {
