@@ -5,6 +5,7 @@ use ggez::{
     conf, event, glam::*, graphics::{self, Color}, input::keyboard::KeyCode, mint::Point2, Context, GameResult
 };
 use core::time;
+use std::f32::consts::PI;
 
 const SCREEN_WIDTH: f32 = 800.0;
 const SCREEN_HEIGHT: f32 = 600.0;
@@ -14,7 +15,10 @@ struct MainState {
     bird: Bird,
     points: [Point2<f32>; 2000],
     spiral: graphics::Mesh,
-    zoom: f32
+    zoom: f32,
+    zoom_factor: f32,
+    zoom_count: u16,
+    zooming_out: bool
 }
 
 impl MainState {
@@ -27,7 +31,7 @@ impl MainState {
             2.0,
             Color::WHITE,
         )?;
-        let bird = Bird::new(circle, 100.0, 0.0, Color::WHITE);
+        let bird = Bird::new(circle, 100.0, 10.0, Color::WHITE);
         let mut points: [Point2<f32>; 2000] = [Point2 { x: 0.0, y: 0.0 }; 2000];
         for i in 0..2000 {
             let (x, y) = MainState::poltocart(i as f32 * 5.0, i as f32 * 0.1);
@@ -35,7 +39,7 @@ impl MainState {
             points[i].y = y;
         }
         let spiral = graphics::Mesh::new_line(ctx, &points, 10.0, Color::RED)?;
-        Ok(MainState { bird, spiral, points, zoom: 1.0 })
+        Ok(MainState { bird, spiral, points, zoom: 1.0, zoom_factor: 0., zoom_count: 0, zooming_out: false})
     }
 
     fn poltocart(radius: f32, angle: f32) -> (f32, f32) {
@@ -71,10 +75,15 @@ impl MainState {
     }
 
     fn zoom_out(&mut self, dt: time::Duration) {
-        self.zoom = if self.zoom - (0.05 * dt.as_secs_f32()) < 0.1 { 0.1 } else { self.zoom - (0.05 * dt.as_secs_f32()) };
+        self.zoom = if self.zoom - (self.zoom_factor * dt.as_secs_f32()) < 0.1 { 0.1 } else { self.zoom - (self.zoom_factor * dt.as_secs_f32()) };
     }
 
     fn update_elements(&mut self, dt: time::Duration) {
+        if self.bird.angle % PI >= 0.0 && self.bird.angle % PI < 0.1 {
+            self.zoom_count = self.zoom_count + 1;
+            self.zoom_factor = if self.zoom_count % 2 == 0 { self.zooming_out = true; 0.05 } else { self.zooming_out = false; 0.0 };
+            println!("{}", self.zoom_count );
+        }
         self.zoom_out(dt);
     }
 
