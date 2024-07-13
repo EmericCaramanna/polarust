@@ -5,10 +5,10 @@ use ggez::{
     conf, event, glam::*, graphics::{self, Color}, input::keyboard::KeyCode, mint::Point2, Context, GameResult
 };
 use core::time;
-use std::f32::consts::PI;
 
 const SCREEN_WIDTH: f32 = 800.0;
 const SCREEN_HEIGHT: f32 = 600.0;
+const INITIAL_ZOOM_FACTOR: f32 = 0.03;
 
 
 struct MainState {
@@ -17,8 +17,8 @@ struct MainState {
     spiral: graphics::Mesh,
     zoom: f32,
     zoom_factor: f32,
-    zoom_count: u16,
-    zooming_out: bool
+    zoom_in: bool,
+    spiral_color: Color
 }
 
 impl MainState {
@@ -39,7 +39,7 @@ impl MainState {
             points[i].y = y;
         }
         let spiral = graphics::Mesh::new_line(ctx, &points, 10.0, Color::RED)?;
-        Ok(MainState { bird, spiral, points, zoom: 1.0, zoom_factor: 0., zoom_count: 0, zooming_out: false})
+        Ok(MainState { bird, spiral, points, zoom: 1.0, zoom_factor: INITIAL_ZOOM_FACTOR, zoom_in: false })
     }
 
     fn poltocart(radius: f32, angle: f32) -> (f32, f32) {
@@ -49,7 +49,6 @@ impl MainState {
     fn draw_elements(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas =
             graphics::Canvas::from_frame(ctx, graphics::Color::from([0.1, 0.2, 0.3, 1.0]));
-        let (x, y) = MainState::poltocart(self.bird.radius, self.bird.angle);
         let circle = graphics::Mesh::new_circle(
             ctx,
             graphics::DrawMode::fill(),
@@ -69,6 +68,7 @@ impl MainState {
         self.bird.circle = circle;
         self.points = points;
         canvas.draw(&self.spiral, Vec2::new(SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0));
+        let (x, y) = MainState::poltocart(self.bird.radius, self.bird.angle);
         canvas.draw(&self.bird.circle, Vec2::new(x + SCREEN_WIDTH / 2.0, y + SCREEN_HEIGHT / 2.0));
         canvas.finish(ctx)?;
         Ok(())
@@ -76,15 +76,26 @@ impl MainState {
 
     fn zoom_out(&mut self, dt: time::Duration) {
         self.zoom = if self.zoom - (self.zoom_factor * dt.as_secs_f32()) < 0.1 { 0.1 } else { self.zoom - (self.zoom_factor * dt.as_secs_f32()) };
+        self.zoom_factor = if self.zoom_factor - (0.00001 * dt.as_secs_f32()) > 0.0 { self.zoom_factor - (0.00001 * dt.as_secs_f32()) } else { self.zoom_factor };
+    }
+
+    fn reset(&mut self, dt: time::Duration) {
+        self.zoom = if self.zoom + (self.zoom_factor * dt.as_secs_f32()) > 1.0 {
+            
+            self.zoom_in = false;
+            self.zoom_factor = INITIAL_ZOOM_FACTOR;
+            1.0 
+        } else {
+            self.zoom + (self.zoom_factor * dt.as_secs_f32()) 
+        };
     }
 
     fn update_elements(&mut self, dt: time::Duration) {
-        if self.bird.angle % PI >= 0.0 && self.bird.angle % PI < 0.1 {
-            self.zoom_count = self.zoom_count + 1;
-            self.zoom_factor = if self.zoom_count % 2 == 0 { self.zooming_out = true; 0.05 } else { self.zooming_out = false; 0.0 };
-            println!("{}", self.zoom_count );
+        if self.zoom_in {
+            self.reset(dt);
+        } else {
+            self.zoom_out(dt);
         }
-        self.zoom_out(dt);
     }
 
     fn point_circle_collision(point: Point2<f32>, circle_center: Point2<f32>, circle_radius: f32) -> bool {
@@ -121,11 +132,23 @@ impl event::EventHandler<ggez::GameError> for MainState {
     }
 
     fn update(&mut self, ctx: &mut Context) -> GameResult {
+        let dt = ctx.time.delta();
         self.bird.update(ctx.time.delta(), ctx);
-        self.update_elements(ctx.time.delta());
+        self.update_elements(dt);
         let col = self.spiral_intersects_circle();
         if col {
             self.bird.update_color(Color::RED);
+            self.zoom_in = true;
+            self.zoom_factor = 1.0;
+            let circle = graphics::Mesh::new_circle(
+                ctx,
+                graphics::DrawMode::fill(),
+                vec2(0., 0.),
+                10.0 * self.zoom,
+                2.0,
+                self.bird.color,
+            )?;
+            self.bird = Bird::new(circle, 100.0, 10.0, Color::WHITE);
         } else {
             self.bird.update_color(Color::WHITE);
         }
