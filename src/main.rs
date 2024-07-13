@@ -39,7 +39,7 @@ impl MainState {
             points[i].y = y;
         }
         let spiral = graphics::Mesh::new_line(ctx, &points, 10.0, Color::RED)?;
-        Ok(MainState { bird, spiral, points, zoom: 1.0, zoom_factor: INITIAL_ZOOM_FACTOR, zoom_in: false })
+        Ok(MainState { bird, spiral, points, zoom: 1.0, zoom_factor: INITIAL_ZOOM_FACTOR, zoom_in: false, spiral_color: Color::RED})
     }
 
     fn poltocart(radius: f32, angle: f32) -> (f32, f32) {
@@ -63,7 +63,7 @@ impl MainState {
             points[i].x = x * self.zoom;
             points[i].y = y * self.zoom;
         }
-        let spiral = graphics::Mesh::new_line(ctx, &points, 10.0 * self.zoom, Color::RED)?;
+        let spiral = graphics::Mesh::new_line(ctx, &points, 10.0 * self.zoom, self.spiral_color)?;
         self.spiral = spiral;
         self.bird.circle = circle;
         self.points = points;
@@ -90,12 +90,31 @@ impl MainState {
         };
     }
 
+    fn update_color(&mut self, dt: time::Duration) {
+        let step = 0.5;
+        
+        if self.spiral_color.r == 1.0 && self.spiral_color.g < 1.0 && self.spiral_color.b == 0.0 {
+            self.spiral_color.g = (self.spiral_color.g + step * dt.as_secs_f32()).min(1.0);
+        } else if self.spiral_color.g == 1.0 && self.spiral_color.r > 0.0 {
+            self.spiral_color.r = (self.spiral_color.r - step * dt.as_secs_f32()).max(0.0);
+        } else if self.spiral_color.g == 1.0 && self.spiral_color.b < 1.0 {
+            self.spiral_color.b = (self.spiral_color.b + step * dt.as_secs_f32()).min(1.0);
+        } else if self.spiral_color.b == 1.0 && self.spiral_color.g > 0.0 {
+            self.spiral_color.g = (self.spiral_color.g - step * dt.as_secs_f32()).max(0.0);
+        } else if self.spiral_color.b == 1.0 && self.spiral_color.r < 1.0 {
+            self.spiral_color.r = (self.spiral_color.r + step * dt.as_secs_f32()).min(1.0);
+        } else if self.spiral_color.r == 1.0 && self.spiral_color.b > 0.0 {
+            self.spiral_color.b = (self.spiral_color.b - step * dt.as_secs_f32()).max(0.0);
+        }
+    }
+
     fn update_elements(&mut self, dt: time::Duration) {
         if self.zoom_in {
             self.reset(dt);
         } else {
             self.zoom_out(dt);
         }
+        self.update_color(dt);
     }
 
     fn point_circle_collision(point: Point2<f32>, circle_center: Point2<f32>, circle_radius: f32) -> bool {
