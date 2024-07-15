@@ -1,15 +1,19 @@
 mod bird;
 use bird::Bird;
 
-use ggez::{
-    conf, event, glam::*, graphics::{self, Color}, input::keyboard::KeyCode, mint::Point2, Context, GameResult
-};
 use core::time;
+use ggez::{
+    conf, event,
+    glam::*,
+    graphics::{self, Color},
+    input::keyboard::KeyCode,
+    mint::Point2,
+    Context, GameResult,
+};
 
 const SCREEN_WIDTH: f32 = 800.0;
 const SCREEN_HEIGHT: f32 = 600.0;
 const INITIAL_ZOOM_FACTOR: f32 = 0.03;
-
 
 struct MainState {
     bird: Bird,
@@ -18,7 +22,8 @@ struct MainState {
     zoom: f32,
     zoom_factor: f32,
     zoom_in: bool,
-    spiral_color: Color
+    spiral_color: Color,
+    score: graphics::Text,
 }
 
 impl MainState {
@@ -39,7 +44,17 @@ impl MainState {
             points[i].y = y;
         }
         let spiral = graphics::Mesh::new_line(ctx, &points, 10.0, Color::RED)?;
-        Ok(MainState { bird, spiral, points, zoom: 1.0, zoom_factor: INITIAL_ZOOM_FACTOR, zoom_in: false, spiral_color: Color::RED})
+        let score = graphics::Text::new("score : 0");
+        Ok(MainState {
+            bird,
+            spiral,
+            points,
+            zoom: 1.0,
+            zoom_factor: INITIAL_ZOOM_FACTOR,
+            zoom_in: false,
+            spiral_color: Color::RED,
+            score,
+        })
     }
 
     fn poltocart(radius: f32, angle: f32) -> (f32, f32) {
@@ -67,32 +82,46 @@ impl MainState {
         self.spiral = spiral;
         self.bird.circle = circle;
         self.points = points;
-        canvas.draw(&self.spiral, Vec2::new(SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0));
+        canvas.draw(
+            &self.spiral,
+            Vec2::new(SCREEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0),
+        );
         let (x, y) = MainState::poltocart(self.bird.radius, self.bird.angle);
-        canvas.draw(&self.bird.circle, Vec2::new(x + SCREEN_WIDTH / 2.0, y + SCREEN_HEIGHT / 2.0));
+        canvas.draw(
+            &self.bird.circle,
+            Vec2::new(x + SCREEN_WIDTH / 2.0, y + SCREEN_HEIGHT / 2.0),
+        );
+        canvas.draw(&self.score, Vec2::new(0.0, 0.0));
         canvas.finish(ctx)?;
         Ok(())
     }
 
     fn zoom_out(&mut self, dt: time::Duration) {
-        self.zoom = if self.zoom - (self.zoom_factor * dt.as_secs_f32()) < 0.1 { 0.1 } else { self.zoom - (self.zoom_factor * dt.as_secs_f32()) };
-        self.zoom_factor = if self.zoom_factor - (0.00001 * dt.as_secs_f32()) > 0.0 { self.zoom_factor - (0.00001 * dt.as_secs_f32()) } else { self.zoom_factor };
+        self.zoom = if self.zoom - (self.zoom_factor * dt.as_secs_f32()) < 0.1 {
+            0.1
+        } else {
+            self.zoom - (self.zoom_factor * dt.as_secs_f32())
+        };
+        self.zoom_factor = if self.zoom_factor - (0.00001 * dt.as_secs_f32()) > 0.0 {
+            self.zoom_factor - (0.00001 * dt.as_secs_f32())
+        } else {
+            self.zoom_factor
+        };
     }
 
     fn reset(&mut self, dt: time::Duration) {
         self.zoom = if self.zoom + (self.zoom_factor * dt.as_secs_f32()) > 1.0 {
-            
             self.zoom_in = false;
             self.zoom_factor = INITIAL_ZOOM_FACTOR;
-            1.0 
+            1.0
         } else {
-            self.zoom + (self.zoom_factor * dt.as_secs_f32()) 
+            self.zoom + (self.zoom_factor * dt.as_secs_f32())
         };
     }
 
     fn update_color(&mut self, dt: time::Duration) {
         let step = 0.5;
-        
+
         if self.spiral_color.r == 1.0 && self.spiral_color.g < 1.0 && self.spiral_color.b == 0.0 {
             self.spiral_color.g = (self.spiral_color.g + step * dt.as_secs_f32()).min(1.0);
         } else if self.spiral_color.g == 1.0 && self.spiral_color.r > 0.0 {
@@ -115,13 +144,22 @@ impl MainState {
             self.zoom_out(dt);
         }
         self.update_color(dt);
+        let mut score = graphics::Text::new(
+            ("Score :".to_string() + &((self.bird.angle - 10.0) as i32).to_string()).as_str(),
+        );
+        score.set_scale(30.0);
+        self.score = score;
     }
 
-    fn point_circle_collision(point: Point2<f32>, circle_center: Point2<f32>, circle_radius: f32) -> bool {
+    fn point_circle_collision(
+        point: Point2<f32>,
+        circle_center: Point2<f32>,
+        circle_radius: f32,
+    ) -> bool {
         let dist_x = point.x - circle_center.x;
         let dist_y = point.y - circle_center.y;
         let distance = (dist_x.powf(2.0) + dist_y.powf(2.0)).sqrt();
-          
+
         distance <= circle_radius
     }
 
@@ -135,19 +173,18 @@ impl MainState {
         }
         false
     }
-
 }
 
 impl event::EventHandler<ggez::GameError> for MainState {
     fn key_down_event(
-            &mut self,
-            _ctx: &mut Context,
-            input: ggez::input::keyboard::KeyInput,
-            _repeated: bool,
-        ) -> Result<(), ggez::GameError> {
-            Ok(if input.keycode == Some(KeyCode::Space) {
-                self.bird.jump();
-            })
+        &mut self,
+        _ctx: &mut Context,
+        input: ggez::input::keyboard::KeyInput,
+        _repeated: bool,
+    ) -> Result<(), ggez::GameError> {
+        Ok(if input.keycode == Some(KeyCode::Space) {
+            self.bird.jump();
+        })
     }
 
     fn update(&mut self, ctx: &mut Context) -> GameResult {
@@ -189,7 +226,6 @@ pub fn main() -> GameResult {
     event::run(ctx, event_loop, state)
 }
 
-
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
@@ -202,10 +238,45 @@ mod tests {
 
     #[test]
     fn test_point_circle_collision() {
-        assert_eq!(MainState::point_circle_collision(Point2 {x: 0., y: 0.}, Point2 {x: 0., y: 0.}, 15.), true);
-        assert_eq!(MainState::point_circle_collision(Point2 {x: 10., y: 0.}, Point2 {x: 0., y: 0.}, 15.), true);
-        assert_eq!(MainState::point_circle_collision(Point2 {x: 0., y: 0.}, Point2 {x: 0., y: -10.}, 15.), true);
-        assert_eq!(MainState::point_circle_collision(Point2 {x: 0., y: 0.}, Point2 {x: 0., y: -100.}, 15.), false);
-        assert_eq!(MainState::point_circle_collision(Point2 {x: -50., y: 50.}, Point2 {x: 0., y: 0.}, 15.), false);
+        assert_eq!(
+            MainState::point_circle_collision(
+                Point2 { x: 0., y: 0. },
+                Point2 { x: 0., y: 0. },
+                15.
+            ),
+            true
+        );
+        assert_eq!(
+            MainState::point_circle_collision(
+                Point2 { x: 10., y: 0. },
+                Point2 { x: 0., y: 0. },
+                15.
+            ),
+            true
+        );
+        assert_eq!(
+            MainState::point_circle_collision(
+                Point2 { x: 0., y: 0. },
+                Point2 { x: 0., y: -10. },
+                15.
+            ),
+            true
+        );
+        assert_eq!(
+            MainState::point_circle_collision(
+                Point2 { x: 0., y: 0. },
+                Point2 { x: 0., y: -100. },
+                15.
+            ),
+            false
+        );
+        assert_eq!(
+            MainState::point_circle_collision(
+                Point2 { x: -50., y: 50. },
+                Point2 { x: 0., y: 0. },
+                15.
+            ),
+            false
+        );
     }
 }
